@@ -433,21 +433,22 @@ def get_repository_aware_summary(repo_commits: Dict[str, List[Dict[str, Any]]], 
     if len(repo_summaries) == 1:
         return repo_summaries[0]
     elif len(repo_summaries) > 1:
-        return _aggregate_repository_summaries(repo_summaries, prompt)
+        return _aggregate_repository_summaries(repo_summaries, prompt, repo_commits)
     else:
         return "No commits found for the specified period. Nothing to summarize."
 
 
-def _aggregate_repository_summaries(repo_summaries: List[str], original_prompt: str) -> str:
+def _aggregate_repository_summaries(repo_summaries: List[str], original_prompt: str, repo_commits: Dict[str, List[Dict[str, Any]]] = None) -> str:
     """
-    Aggregate multiple repository summaries into a final comprehensive summary.
+    Aggregate multiple repository summaries into a final comprehensive summary using AI.
     
     Args:
         repo_summaries: List of summaries from individual repositories
         original_prompt: The original prompt to maintain consistency
+        repo_commits: Optional repository commit data for context
         
     Returns:
-        Final aggregated summary organized by repository
+        Final aggregated summary organized by repository with AI-generated insights
     """
     if not repo_summaries:
         return "No commits found for the specified period. Nothing to summarize."
@@ -455,15 +456,68 @@ def _aggregate_repository_summaries(repo_summaries: List[str], original_prompt: 
     if len(repo_summaries) == 1:
         return repo_summaries[0]
     
-    logger.info("Aggregating %d repository summaries into final summary", len(repo_summaries))
+    # Calculate repository statistics for context
+    repo_count = len(repo_summaries)
+    total_commits = 0
+    commit_distribution = []
     
-    # For multiple repositories, organize by repository
-    organized_summary = "\n\n".join(repo_summaries)
+    if repo_commits:
+        for repo_name, commits in repo_commits.items():
+            commit_count = len(commits)
+            total_commits += commit_count
+            commit_distribution.append(f"{repo_name}: {commit_count} commits")
     
-    # Add overall summary if we have multiple repositories
-    if len(repo_summaries) > 1:
-        repo_count = len(repo_summaries)
-        intro = f"## Activity Summary Across {repo_count} Repositories\n\n"
-        return intro + organized_summary
+    logger.info("Aggregating %d repository summaries into final summary (%d total commits)", 
+               repo_count, total_commits)
     
-    return organized_summary
+    # Configure the Gemini client
+    config = get_config()
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    model = genai.GenerativeModel(config.ai.model_name)
+    
+    # Create repository-aware aggregation prompt
+    summaries_text = "\n\n---\n\n".join(f"Repository Summary {i+1} - {repo_summaries[i].split('**')[1].split('**')[0] if '**' in repo_summaries[i] else f'Repository {i+1}'}:\n{repo_summaries[i]}" 
+                                        for i in range(len(repo_summaries)))
+    
+    # Build context information
+    context_info = f"Total repositories: {repo_count}\nTotal commits: {total_commits}"
+    if commit_distribution:
+        context_info += f"\nCommit distribution:\n" + "\n".join(f"- {dist}" for dist in commit_distribution)
+    
+    aggregation_prompt = f"""{original_prompt}
+
+You are reviewing multiple repository summaries for a comprehensive activity overview. Please create a well-structured final summary that:
+
+1. Maintains repository organization and clarity
+2. Identifies cross-repository patterns and themes
+3. Highlights the most significant accomplishments
+4. Provides actionable insights about the overall development activity
+
+Context:
+{context_info}
+
+Repository Summaries:
+
+{summaries_text}
+
+Please provide a comprehensive summary that organizes the information clearly while identifying patterns and themes across repositories. Focus on the developer's key accomplishments and impact."""
+    
+    try:
+        response = model.generate_content(aggregation_prompt)
+        final_summary = response.text
+        
+        # Add header with repository context
+        header = f"## Activity Summary ({repo_count} repositories, {total_commits} commits)\n\n"
+        return header + final_summary
+        
+    except Exception as e:
+        logger.error("Error aggregating repository summaries: %s", e)
+        logger.warning("Falling back to structured concatenation")
+        
+        # Fallback: structured concatenation with context
+        header = f"## Activity Summary Across {repo_count} Repositories ({total_commits} commits)\n\n"
+        if commit_distribution:
+            header += "### Repository Breakdown:\n" + "\n".join(f"- {dist}" for dist in commit_distribution) + "\n\n"
+        
+        organized_summary = "\n\n".join(repo_summaries)
+        return header + organized_summary

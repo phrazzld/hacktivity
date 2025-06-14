@@ -11,7 +11,7 @@ from typing import Dict, Optional
 
 import click
 
-from hacktivity.core.ai import check_ai_prerequisites, get_batched_summary, get_repository_aware_summary
+from hacktivity.core.ai import check_ai_prerequisites, get_batched_summary, get_repository_aware_summary, get_repository_summary
 from hacktivity.core.github import check_github_prerequisites, get_github_user, fetch_commits, fetch_commits_by_repository
 from hacktivity.core.logging import setup_logging, get_logger
 from hacktivity.core.config import get_config, save_default_config
