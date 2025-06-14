@@ -1,0 +1,14 @@
+# requirements.txt
+google-generativeai>=0.3.0
+click>=8.0            # Better CLI framework than argparse
+python-dateutil>=2.8  # Flexible date parsing
+pydantic>=2.0        # Config validation
+diskcache>=5.0       # Simple, robust caching
+rich>=13.0           # Progress bars and formatting
+tenacity>=8.0        # Retry logic with exponential backoff
+tomli>=1.2.0;python_version<"3.11"  # TOML parsing for older Python versions
+
+# Development dependencies
+pytest>=7.0          # Testing framework
+pytest-cov>=4.0      # Coverage reporting
+pytest-mock>=3.0     # Enhanced mocking
