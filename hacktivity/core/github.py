@@ -90,11 +90,59 @@ def check_github_prerequisites() -> None:
 
     # Check for gh auth status
     try:
-        subprocess.run(["gh", "auth", "status"], check=True, capture_output=True)
-    except subprocess.CalledProcessError:
+        result = subprocess.run(["gh", "auth", "status"], check=True, capture_output=True, text=True)
+        logger.debug("GitHub authentication status: %s", result.stderr)
+    except subprocess.CalledProcessError as e:
         logger.error("You are not logged into the GitHub CLI ('gh').")
         logger.error("Please run 'gh auth login' to authenticate.")
+        logger.error("For private organization repositories, ensure your token has 'repo' and 'read:org' scopes")
         sys.exit(1)
+    
+    # Check token scopes for private repo access
+    _check_token_scopes()
+
+
+def _check_token_scopes() -> None:
+    """Check if the current GitHub token has required scopes for private org repos."""
+    try:
+        # Get current token scopes
+        result = subprocess.run(
+            ["gh", "api", "user", "-i"],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        
+        # Extract X-OAuth-Scopes header from response
+        headers = result.stdout.split('\n')
+        scopes_line = None
+        for line in headers:
+            if line.lower().startswith('x-oauth-scopes:'):
+                scopes_line = line
+                break
+        
+        if scopes_line:
+            # Parse scopes from header
+            scopes_str = scopes_line.split(':', 1)[1].strip()
+            scopes = [s.strip() for s in scopes_str.split(',') if s.strip()]
+            
+            required_scopes = ['repo']  # repo scope covers private repos
+            missing_scopes = [scope for scope in required_scopes if scope not in scopes]
+            
+            if missing_scopes:
+                logger.warning("GitHub token missing required scopes: %s", missing_scopes)
+                logger.warning("To access private organization repositories:")
+                logger.warning("1. Go to https://github.com/settings/tokens")
+                logger.warning("2. Edit your token to include 'repo' scope")
+                logger.warning("3. Or re-run: gh auth login --scopes repo,read:org")
+                logger.warning("Current scopes: %s", scopes)
+            else:
+                logger.debug("GitHub token has required scopes: %s", scopes)
+        else:
+            logger.debug("Could not determine GitHub token scopes")
+            
+    except subprocess.CalledProcessError:
+        logger.debug("Could not check GitHub token scopes")
 
 
 def get_github_user() -> str:

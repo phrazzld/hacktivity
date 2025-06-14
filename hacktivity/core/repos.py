@@ -209,11 +209,11 @@ def _discover_repos_with_graphql(user: str, org_filter: Optional[str]) -> List[D
             variables["after"] = page_info.get("endCursor")
             
     else:
-        # GraphQL query for user repositories (owned + collaborator)
+        # GraphQL query for user repositories (owned + collaborator + organization member)
         query = """
         query($login: String!, $first: Int!, $after: String) {
           user(login: $login) {
-            repositories(first: $first, after: $after, affiliations: [OWNER, COLLABORATOR], orderBy: {field: UPDATED_AT, direction: DESC}) {
+            repositories(first: $first, after: $after, affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER], orderBy: {field: UPDATED_AT, direction: DESC}) {
               pageInfo { hasNextPage endCursor }
               nodes {
                 name
@@ -353,21 +353,19 @@ def discover_user_repositories(user: str, org_filter: Optional[str] = None) -> L
                 all_repos.extend(org_repos)
                 
             else:
-                # Fetch user's own repositories
-                logger.info("Fetching user's own repositories")
-                user_repos = _fetch_repositories_with_api(
+                # Fetch all repositories user has access to
+                # This includes: owner, collaborator, organization_member
+                logger.info("Fetching all accessible repositories (owner, collaborator, organization member)")
+                all_repos_response = _fetch_repositories_with_api(
                     "user/repos",
-                    {'affiliation': 'owner', 'sort': 'updated', 'direction': 'desc'}
+                    {
+                        'affiliation': 'owner,collaborator,organization_member', 
+                        'sort': 'updated', 
+                        'direction': 'desc',
+                        'visibility': 'all'  # Include both public and private repos
+                    }
                 )
-                all_repos.extend(user_repos)
-                
-                # Fetch repositories user collaborates on
-                logger.info("Fetching repositories user collaborates on")
-                collab_repos = _fetch_repositories_with_api(
-                    "user/repos", 
-                    {'affiliation': 'collaborator', 'sort': 'updated', 'direction': 'desc'}
-                )
-                all_repos.extend(collab_repos)
+                all_repos.extend(all_repos_response)
             
             # Parse and clean repository data
             parsed_repos = _parse_repository_data(all_repos)
