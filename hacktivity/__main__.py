@@ -11,8 +11,8 @@ from typing import Dict, Optional
 
 import click
 
-from hacktivity.core.ai import check_ai_prerequisites, get_batched_summary
-from hacktivity.core.github import check_github_prerequisites, get_github_user, fetch_commits
+from hacktivity.core.ai import check_ai_prerequisites, get_batched_summary, get_repository_aware_summary
+from hacktivity.core.github import check_github_prerequisites, get_github_user, fetch_commits, fetch_commits_by_repository
 from hacktivity.core.logging import setup_logging, get_logger
 from hacktivity.core.config import get_config, save_default_config
 
@@ -267,10 +267,10 @@ def summary(
     # Get GitHub user
     github_user = get_github_user()
     
-    # Fetch commits
-    commits = fetch_commits(github_user, since, until, org, repo)
+    # Fetch commits grouped by repository
+    repo_commits = fetch_commits_by_repository(github_user, since, until, org, repo)
     
-    if not commits:
+    if not repo_commits:
         print("\nNo activity found for the selected criteria.", file=sys.stderr)
         return
     
@@ -282,7 +282,7 @@ def summary(
         print(f"Available prompts: {available}", file=sys.stderr)
         sys.exit(1)
         
-    summary = get_batched_summary(commits, prompts[selected_prompt])
+    summary = get_repository_aware_summary(repo_commits, prompts[selected_prompt])
     
     # Prepare metadata for formatting
     metadata = {

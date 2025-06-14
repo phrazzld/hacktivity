@@ -3,7 +3,7 @@
 import json
 import subprocess
 import sys
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
@@ -254,3 +254,148 @@ def fetch_commits(user: str, since: str, until: str, org: Optional[str] = None, 
     
     # Apply retry decorator and execute
     return retry_decorator(_fetch_with_retry)()
+
+
+def fetch_commits_by_repository(user: str, since: str, until: str, org: Optional[str] = None, repo: Optional[str] = None) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Fetches commit activity from GitHub grouped by repository.
+    Similar to fetch_commits but preserves repository structure.
+    
+    Args:
+        user: GitHub username
+        since: Start date in YYYY-MM-DD format
+        until: End date in YYYY-MM-DD format
+        org: Optional organization filter
+        repo: Optional repository filter (e.g., 'owner/repo-name')
+        
+    Returns:
+        Dictionary mapping repository names to lists of commit data
+    """
+    import uuid
+    from .repos import discover_user_repositories, filter_repositories_by_activity
+    from .parallel import fetch_commits_parallel
+    from .commits import aggregate_commits_by_author
+    
+    config = _get_config()
+    
+    # Create dynamic retry decorator with config values
+    retry_decorator = retry(
+        stop=stop_after_attempt(config.github.retry_attempts),
+        wait=wait_exponential(multiplier=1, min=config.github.retry_min_wait, max=config.github.retry_max_wait),
+        retry=retry_if_exception_type(subprocess.TimeoutExpired),
+        reraise=True
+    )
+    
+    def _fetch_repo_grouped_with_retry():
+        # Generate cache key and check for cached results
+        cache_key = f"repo_grouped:{_generate_cache_key(user, since, until, org, repo)}"
+        cached_repo_commits = cache.get(cache_key)
+        
+        if cached_repo_commits is not None:
+            logger.info("Using cached repository-grouped results for '%s' from %s to %s", user, since, until)
+            return cached_repo_commits
+        
+        logger.info("Fetching repository-grouped commits for '%s' from %s to %s...", user, since, until)
+
+        # Handle single repository case
+        if repo:
+            logger.info("Single repository mode: %s", repo)
+            try:
+                from .commits import fetch_repo_commits
+                
+                # Fetch commits from the specific repository
+                raw_commits = fetch_repo_commits(repo, since, until, user)
+                
+                # Filter by author and add repository field
+                filtered_commits = []
+                for commit in raw_commits:
+                    if commit.get('author_login') == user:
+                        commit_with_repo = commit.copy()
+                        commit_with_repo['repository'] = repo
+                        filtered_commits.append(commit_with_repo)
+                
+                repo_commits = {repo: filtered_commits}
+                
+                logger.info("Found %d commits in repository '%s'", len(filtered_commits), repo)
+                
+                # Cache the successful results
+                cache.set(cache_key, repo_commits)
+                return repo_commits
+                
+            except Exception as e:
+                logger.error("Error fetching from repository '%s': %s", repo, e)
+                # Fall back to empty results for single repo errors
+                cache.set(cache_key, {})
+                return {}
+
+        # Repository discovery and parallel processing mode
+        try:
+            # Discover repositories for the user
+            logger.info("Discovering repositories for user '%s'%s", user, f" in org '{org}'" if org else "")
+            repositories = discover_user_repositories(user, org)
+            
+            if not repositories:
+                logger.warning("No repositories found for user '%s'", user)
+                cache.set(cache_key, {})
+                return {}
+            
+            # Filter repositories by activity in date range for efficiency
+            active_repos = filter_repositories_by_activity(repositories, since, until)
+            repo_names = [repo['full_name'] for repo in active_repos]
+            
+            if not repo_names:
+                logger.info("No repositories have activity in the date range %s to %s", since, until)
+                cache.set(cache_key, {})
+                return {}
+            
+            logger.info("Processing %d repositories with potential activity", len(repo_names))
+            
+            # Generate operation ID for state tracking
+            operation_id = f"repo_commits_{user}_{since}_{until}_{uuid.uuid4().hex[:8]}"
+            
+            # Use parallel processing to fetch commits from all repositories
+            repo_commits = fetch_commits_parallel(
+                operation_id=operation_id,
+                repositories=repo_names,
+                since=since,
+                until=until,
+                author_filter=user
+            )
+            
+            # Filter each repository's commits by author and add repository context
+            filtered_repo_commits = {}
+            for repo_name, commits in repo_commits.items():
+                filtered_commits = []
+                for commit in commits:
+                    if commit.get('author_login') == user:
+                        commit_with_repo = commit.copy()
+                        commit_with_repo['repository'] = repo_name
+                        filtered_commits.append(commit_with_repo)
+                
+                if filtered_commits:  # Only include repos with user commits
+                    filtered_repo_commits[repo_name] = filtered_commits
+            
+            total_commits = sum(len(commits) for commits in filtered_repo_commits.values())
+            logger.info("Found %d commits across %d repositories", total_commits, len(filtered_repo_commits))
+            
+            # Cache the successful results
+            cache.set(cache_key, filtered_repo_commits)
+            return filtered_repo_commits
+            
+        except Exception as e:
+            logger.error("Error fetching repository-grouped GitHub activity: %s", e)
+            
+            # Try to return cached results as fallback
+            logger.info("Attempting to use cached results as fallback...")
+            cached_repo_commits = cache.get(cache_key, max_age_hours=168)  # 7 days for fallback
+            if cached_repo_commits is not None:
+                logger.info("Using cached repository-grouped results due to error")
+                return cached_repo_commits
+            else:
+                logger.warning("No cached repository-grouped results available for fallback")
+                
+            # Re-raise the original error if no fallback available
+            raise
+    
+    # Apply retry decorator and execute
+    return retry_decorator(_fetch_repo_grouped_with_retry)()

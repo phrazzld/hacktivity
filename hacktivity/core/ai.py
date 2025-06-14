@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import hashlib
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 
 # Try to import the Google Generative AI library
 try:
@@ -308,3 +308,111 @@ def get_batched_summary(commits: List[str], prompt: str) -> str:
                len(batches), len(failed_batches))
     
     return final_summary
+
+
+def get_repository_aware_summary(repo_commits: Dict[str, List[Dict[str, Any]]], prompt: str) -> str:
+    """
+    Process commits grouped by repository with repository-aware progress indicators.
+    
+    Args:
+        repo_commits: Dictionary mapping repository names to commit data
+        prompt: The system prompt for summarization
+        
+    Returns:
+        AI-generated summary from repository-aware processing
+    """
+    if not repo_commits:
+        return "No commits found for the specified period. Nothing to summarize."
+    
+    # Import Rich for progress display
+    try:
+        from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TaskID
+        rich_available = True
+    except ImportError:
+        rich_available = False
+        logger.warning("Rich not available, falling back to simple progress logging")
+    
+    # Prepare repository summaries
+    repo_summaries = []
+    total_repos = len(repo_commits)
+    total_commits = sum(len(commits) for commits in repo_commits.values())
+    
+    logger.info("Processing %d repositories with %d total commits", total_repos, total_commits)
+    
+    if rich_available:
+        # Use Rich progress bar for repository-aware progress
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("{task.completed}/{task.total} repos"),
+            transient=False  # Keep progress visible in non-debug mode
+        ) as progress:
+            task = progress.add_task("Processing repositories...", total=total_repos)
+            
+            for repo_name, commits in repo_commits.items():
+                # Extract commit messages for this repository
+                commit_messages = [commit.get('message', '') for commit in commits]
+                
+                # Update progress with current repository
+                progress.update(task, description=f"Processing {repo_name} ({len(commit_messages)} commits)")
+                
+                # Generate summary for this repository
+                if commit_messages:
+                    repo_summary = get_summary(commit_messages, prompt)
+                    repo_summaries.append(f"**{repo_name}** ({len(commit_messages)} commits):\n{repo_summary}")
+                
+                # Advance progress
+                progress.update(task, advance=1)
+                
+                # Small delay to make progress visible
+                time.sleep(0.1)
+    else:
+        # Fallback without Rich
+        for i, (repo_name, commits) in enumerate(repo_commits.items(), 1):
+            commit_messages = [commit.get('message', '') for commit in commits]
+            logger.info("Processing repository %d/%d: %s (%d commits)", 
+                       i, total_repos, repo_name, len(commit_messages))
+            
+            if commit_messages:
+                repo_summary = get_summary(commit_messages, prompt)
+                repo_summaries.append(f"**{repo_name}** ({len(commit_messages)} commits):\n{repo_summary}")
+    
+    # Aggregate repository summaries if we have multiple repositories
+    if len(repo_summaries) == 1:
+        return repo_summaries[0]
+    elif len(repo_summaries) > 1:
+        return _aggregate_repository_summaries(repo_summaries, prompt)
+    else:
+        return "No commits found for the specified period. Nothing to summarize."
+
+
+def _aggregate_repository_summaries(repo_summaries: List[str], original_prompt: str) -> str:
+    """
+    Aggregate multiple repository summaries into a final comprehensive summary.
+    
+    Args:
+        repo_summaries: List of summaries from individual repositories
+        original_prompt: The original prompt to maintain consistency
+        
+    Returns:
+        Final aggregated summary organized by repository
+    """
+    if not repo_summaries:
+        return "No commits found for the specified period. Nothing to summarize."
+    
+    if len(repo_summaries) == 1:
+        return repo_summaries[0]
+    
+    logger.info("Aggregating %d repository summaries into final summary", len(repo_summaries))
+    
+    # For multiple repositories, organize by repository
+    organized_summary = "\n\n".join(repo_summaries)
+    
+    # Add overall summary if we have multiple repositories
+    if len(repo_summaries) > 1:
+        repo_count = len(repo_summaries)
+        intro = f"## Activity Summary Across {repo_count} Repositories\n\n"
+        return intro + organized_summary
+    
+    return organized_summary

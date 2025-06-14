@@ -347,7 +347,7 @@
 
 ## Phase 9: Enhanced User Experience & Output Quality
 
-- [ ] **T030 · Feature · P0: implement --debug flag and clean default output**
+- [x] **T030 · Feature · P0: implement --debug flag and clean default output**
     - **Context:** Current output is cluttered with debug logs, making it hard to parse the actual summary
     - **Action:**
         1. Add `--debug` flag to CLI using click's built-in boolean option
@@ -360,7 +360,7 @@
         3. Non-debug output is clean and professional
     - **Depends‑on:** none
 
-- [ ] **T031 · Feature · P1: add repository-aware progress indicators**
+- [~] **T031 · Feature · P1: add repository-aware progress indicators**
     - **Context:** Current progress shows batch numbers, but users think in terms of repositories
     - **Action:**
         1. Extract repository names from commit data before processing
