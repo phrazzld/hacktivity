@@ -373,7 +373,7 @@
         3. Clean, informative progress display in non-debug mode
     - **Depends‑on:** none
 
-- [ ] **T032 · Refactor · P1: modify commit grouping to be repository-first**
+- [x] **T032 · Refactor · P1: modify commit grouping to be repository-first**
     - **Context:** Current batch processing groups commits arbitrarily, losing repository context
     - **Action:**
         1. Update `fetch_commits` to return commits grouped by repository
@@ -386,7 +386,7 @@
         3. Batch splitting respects repository boundaries
     - **Depends‑on:** none
 
-- [ ] **T033 · Feature · P1: implement repository-level AI summarization**
+- [~] **T033 · Feature · P1: implement repository-level AI summarization**
     - **Context:** Repository context is lost when commits are mixed across repos in batches
     - **Action:**
         1. Create `get_repository_summary(repo_name, commits, prompt)` function

@@ -310,6 +310,55 @@ def get_batched_summary(commits: List[str], prompt: str) -> str:
     return final_summary
 
 
+def get_repository_summary(repo_name: str, commits: List[Dict[str, Any]], prompt: str) -> str:
+    """
+    Generate a summary for a single repository's commits with repository-specific caching.
+    
+    Args:
+        repo_name: Name of the repository (e.g., 'owner/repo-name')
+        commits: List of commit data for this repository
+        prompt: The system prompt for summarization
+        
+    Returns:
+        AI-generated summary for this repository
+    """
+    if not commits:
+        return ""
+    
+    # Extract commit messages
+    commit_messages = [commit.get('message', '') for commit in commits]
+    if not commit_messages:
+        return ""
+    
+    # Generate repository-specific cache key
+    import hashlib
+    commits_text = "\n".join(commit_messages)
+    commits_hash = hashlib.sha256(commits_text.encode('utf-8')).hexdigest()
+    prompt_hash = hashlib.sha256(prompt.encode('utf-8')).hexdigest()
+    cache_key = f"repo_summary:{repo_name}:{commits_hash[:16]}:{prompt_hash[:8]}"
+    
+    # Check cache first
+    from . import cache
+    cached_summary = cache.get(cache_key, max_age_hours=720)  # 30 days for repository summaries
+    if cached_summary is not None:
+        logger.debug("Using cached summary for repository %s (%d commits)", repo_name, len(commit_messages))
+        return cached_summary
+    
+    logger.info("Generating summary for repository %s (%d commits)", repo_name, len(commit_messages))
+    
+    # Create repository-specific prompt with context
+    repo_prompt = f"{prompt}\n\nRepository: {repo_name}\nCommits in this repository:"
+    
+    # Generate summary using existing function
+    summary = get_summary(commit_messages, repo_prompt)
+    
+    # Cache the result with repository-specific key
+    cache.set(cache_key, summary)
+    logger.debug("Cached summary for repository %s", repo_name)
+    
+    return summary
+
+
 def get_repository_aware_summary(repo_commits: Dict[str, List[Dict[str, Any]]], prompt: str) -> str:
     """
     Process commits grouped by repository with repository-aware progress indicators.
@@ -358,9 +407,10 @@ def get_repository_aware_summary(repo_commits: Dict[str, List[Dict[str, Any]]], 
                 progress.update(task, description=f"Processing {repo_name} ({len(commit_messages)} commits)")
                 
                 # Generate summary for this repository
-                if commit_messages:
-                    repo_summary = get_summary(commit_messages, prompt)
-                    repo_summaries.append(f"**{repo_name}** ({len(commit_messages)} commits):\n{repo_summary}")
+                if commits:
+                    repo_summary = get_repository_summary(repo_name, commits, prompt)
+                    if repo_summary:
+                        repo_summaries.append(f"**{repo_name}** ({len(commit_messages)} commits):\n{repo_summary}")
                 
                 # Advance progress
                 progress.update(task, advance=1)
@@ -374,9 +424,10 @@ def get_repository_aware_summary(repo_commits: Dict[str, List[Dict[str, Any]]], 
             logger.info("Processing repository %d/%d: %s (%d commits)", 
                        i, total_repos, repo_name, len(commit_messages))
             
-            if commit_messages:
-                repo_summary = get_summary(commit_messages, prompt)
-                repo_summaries.append(f"**{repo_name}** ({len(commit_messages)} commits):\n{repo_summary}")
+            if commits:
+                repo_summary = get_repository_summary(repo_name, commits, prompt)
+                if repo_summary:
+                    repo_summaries.append(f"**{repo_name}** ({len(commit_messages)} commits):\n{repo_summary}")
     
     # Aggregate repository summaries if we have multiple repositories
     if len(repo_summaries) == 1:
