@@ -399,7 +399,7 @@
         3. Repository name is included in AI prompts for better context
     - **Depends‑on:** [T032]
 
-- [~] **T034 · Feature · P1: implement repository-aware aggregation logic**
+- [x] **T034 · Feature · P1: implement repository-aware aggregation logic**
     - **Context:** Final aggregation should preserve repository structure and context
     - **Action:**
         1. Update `_aggregate_batch_summaries` to be `_aggregate_repository_summaries`
