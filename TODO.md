@@ -412,7 +412,7 @@
         3. Repository structure is maintained in the final output
     - **Depends‑on:** [T033]
 
-- [ ] **T035 · Feature · P1: update prompts for personal activity focus**
+- [x] **T035 · Feature · P1: update prompts for personal activity focus**
     - **Context:** Current prompts mention "team accomplishments" when processing individual commits
     - **Action:**
         1. Update default prompts to use personal language ("your accomplishments", "your work")
@@ -425,7 +425,7 @@
         3. Language is personal, specific, and developer-focused
     - **Depends‑on:** none
 
-- [ ] **T036 · Feature · P1: implement repository-structured output formatting**
+- [x] **T036 · Feature · P1: implement repository-structured output formatting**
     - **Context:** Output should clearly show activity organized by repository
     - **Action:**
         1. Create output formatter that structures content by repository
@@ -441,7 +441,7 @@
         2. Verify repository names and commit counts are accurate
     - **Depends‑on:** [T033, T034]
 
-- [ ] **T037 · Feature · P2: add output customization configuration**
+- [x] **T037 · Feature · P2: add output customization configuration**
     - **Context:** Users may want different levels of detail and organization
     - **Action:**
         1. Add configuration options for output verbosity (summary, detailed, full)

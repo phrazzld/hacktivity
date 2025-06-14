@@ -55,6 +55,97 @@ def get_prompt_descriptions() -> Dict[str, str]:
     }
 
 
+def format_repository_structured_output(summary: str, repo_commits: Dict, metadata: Dict[str, str], 
+                                       verbosity: Optional[str] = None, show_repos: Optional[bool] = None, 
+                                       show_counts: Optional[bool] = None) -> str:
+    """Format summary with explicit repository structure and organization.
+    
+    Args:
+        summary: The AI-generated summary text
+        repo_commits: Dictionary mapping repository names to commit data
+        metadata: Additional metadata (dates, user, etc.)
+        verbosity: Output verbosity level override
+        show_repos: Show repository sections override
+        show_counts: Show commit counts override
+    
+    Returns:
+        Repository-structured summary with consistent formatting
+    """
+    if not repo_commits:
+        return summary
+    
+    # Load configuration and apply CLI overrides
+    config = get_config()
+    effective_verbosity = verbosity or config.app.output_verbosity
+    effective_show_repos = show_repos if show_repos is not None else config.app.show_repository_sections
+    effective_show_counts = show_counts if show_counts is not None else config.app.show_commit_counts
+    effective_show_header = config.app.show_statistics_header
+    effective_show_overview = config.app.show_repository_overview
+    
+    # Calculate repository statistics
+    total_repos = len(repo_commits)
+    total_commits = sum(len(commits) for commits in repo_commits.values())
+    
+    # Build structured output based on verbosity and settings
+    lines = []
+    
+    # Header with overall statistics (if enabled)
+    if effective_show_header and effective_verbosity != "summary":
+        lines.append(f"## Development Activity Summary")
+        lines.append(f"**Period:** {metadata['since']} to {metadata['until']}")
+        
+        if effective_show_counts:
+            lines.append(f"**Repositories:** {total_repos} | **Total Commits:** {total_commits}")
+        else:
+            lines.append(f"**Repositories:** {total_repos}")
+        lines.append("")
+    
+    # Repository overview section (if enabled and multiple repos)
+    if effective_show_overview and effective_show_repos and total_repos > 1 and effective_verbosity == "full":
+        lines.append("### Repository Overview")
+        for repo_name, commits in sorted(repo_commits.items()):
+            commit_count = len(commits)
+            if effective_show_counts:
+                lines.append(f"- **{repo_name}**: {commit_count} commits")
+            else:
+                lines.append(f"- **{repo_name}**")
+        lines.append("")
+    
+    # Main summary content (from AI)
+    if effective_verbosity == "summary":
+        # For summary mode, just return the AI content without extra structure
+        return summary
+    elif effective_verbosity == "detailed":
+        lines.append("### Activity Details")
+        lines.append(summary)
+    else:  # full verbosity
+        lines.append("### Activity Details")
+        
+        # If the AI summary already has good structure, use it
+        # Otherwise, ensure we have repository sections
+        if effective_show_repos and ("**" in summary and any(repo in summary for repo in repo_commits.keys())):
+            # AI already structured by repository
+            lines.append(summary)
+        elif effective_show_repos:
+            # Fallback: create basic repository structure
+            lines.append(summary)
+            lines.append("")
+            lines.append("### Repository Breakdown")
+            for repo_name, commits in sorted(repo_commits.items()):
+                commit_count = len(commits)
+                if effective_show_counts:
+                    lines.append(f"**{repo_name}** ({commit_count} commits)")
+                else:
+                    lines.append(f"**{repo_name}**")
+                lines.append("- Activity details processed above")
+                lines.append("")
+        else:
+            # No repository sections, just the summary
+            lines.append(summary)
+    
+    return "\n".join(lines)
+
+
 def format_output(summary: str, format_type: str, metadata: Dict[str, str]) -> str:
     """Format the summary according to the specified output format.
     
@@ -153,13 +244,30 @@ def format_output(summary: str, format_type: str, metadata: Dict[str, str]) -> s
     default=False,
     help="Enable debug logging output."
 )
+@click.option(
+    "--verbosity",
+    type=click.Choice(["summary", "detailed", "full"]),
+    default=None,
+    help="Output detail level (overrides config)."
+)
+@click.option(
+    "--show-repos/--hide-repos",
+    default=None,
+    help="Show/hide repository sections (overrides config)."
+)
+@click.option(
+    "--show-counts/--hide-counts",
+    default=None,
+    help="Show/hide commit counts (overrides config)."
+)
 @click.pass_context
-def cli(ctx, since, until, prompt_type, prompt_name, org, repo, output_format, debug):
+def cli(ctx, since, until, prompt_type, prompt_name, org, repo, output_format, debug, verbosity, show_repos, show_counts):
     """Summarize your GitHub activity using the Gemini API."""
     if ctx.invoked_subcommand is None:
         # If no subcommand is provided, run the summary with the provided options
         ctx.invoke(summary, since=since, until=until, prompt_type=prompt_type, 
-                  prompt_name=prompt_name, org=org, repo=repo, output_format=output_format, debug=debug)
+                  prompt_name=prompt_name, org=org, repo=repo, output_format=output_format, 
+                  debug=debug, verbosity=verbosity, show_repos=show_repos, show_counts=show_counts)
 
 
 @cli.command()
@@ -208,6 +316,22 @@ def cli(ctx, since, until, prompt_type, prompt_name, org, repo, output_format, d
     default=False,
     help="Enable debug logging output."
 )
+@click.option(
+    "--verbosity",
+    type=click.Choice(["summary", "detailed", "full"]),
+    default=None,
+    help="Output detail level (overrides config)."
+)
+@click.option(
+    "--show-repos/--hide-repos",
+    default=None,
+    help="Show/hide repository sections (overrides config)."
+)
+@click.option(
+    "--show-counts/--hide-counts",
+    default=None,
+    help="Show/hide commit counts (overrides config)."
+)
 def summary(
     since: Optional[str],
     until: Optional[str], 
@@ -216,7 +340,10 @@ def summary(
     org: Optional[str],
     repo: Optional[str],
     output_format: Optional[str],
-    debug: bool = False
+    debug: bool = False,
+    verbosity: Optional[str] = None,
+    show_repos: Optional[bool] = None,
+    show_counts: Optional[bool] = None
 ) -> None:
     """Summarize your GitHub activity using the Gemini API."""
     
@@ -294,8 +421,13 @@ def summary(
         "repo": repo or "all"
     }
     
-    # Format and output results
-    formatted_output = format_output(summary, output_format, metadata)
+    # Apply repository-structured formatting first
+    structured_summary = format_repository_structured_output(
+        summary, repo_commits, metadata, verbosity, show_repos, show_counts
+    )
+    
+    # Then apply format-specific formatting
+    formatted_output = format_output(structured_summary, output_format, metadata)
     print(formatted_output)
 
 

@@ -104,6 +104,13 @@ class AppConfig(BaseModel):
     log_level: str = Field(default="INFO", description="Log level (DEBUG, INFO, WARNING, ERROR)")
     default_prompt_type: str = Field(default="standup", description="Default prompt type")
     default_format: str = Field(default="markdown", description="Default output format (markdown, json, plain)")
+    
+    # Output customization settings
+    output_verbosity: str = Field(default="detailed", description="Output detail level (summary, detailed, full)")
+    show_repository_sections: bool = Field(default=True, description="Show repository sections in output")
+    show_commit_counts: bool = Field(default=True, description="Show commit counts in repository headers")
+    show_statistics_header: bool = Field(default=True, description="Show statistics header with overview")
+    show_repository_overview: bool = Field(default=True, description="Show repository overview section")
 
 
 class Config(BaseModel):
@@ -201,6 +208,13 @@ retry_delay = 5                # Delay in seconds between batch retries (1-60)
 log_level = "INFO"              # Log level: DEBUG, INFO, WARNING, ERROR
 default_prompt_type = "standup" # Default prompt type: standup, retro, weekly
 default_format = "markdown"     # Default output format: markdown, json, plain
+
+# Output customization settings
+output_verbosity = "detailed"          # Output detail level: summary, detailed, full
+show_repository_sections = true        # Show repository sections in output (true/false)
+show_commit_counts = true              # Show commit counts in repository headers (true/false)
+show_statistics_header = true          # Show statistics header with overview (true/false)
+show_repository_overview = true       # Show repository overview section (true/false)
 '''
     
     try:
