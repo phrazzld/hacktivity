@@ -360,7 +360,7 @@
         3. Non-debug output is clean and professional
     - **Depends‑on:** none
 
-- [~] **T031 · Feature · P1: add repository-aware progress indicators**
+- [x] **T031 · Feature · P1: add repository-aware progress indicators**
     - **Context:** Current progress shows batch numbers, but users think in terms of repositories
     - **Action:**
         1. Extract repository names from commit data before processing
