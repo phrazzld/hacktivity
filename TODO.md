@@ -386,7 +386,7 @@
         3. Batch splitting respects repository boundaries
     - **Depends‑on:** none
 
-- [~] **T033 · Feature · P1: implement repository-level AI summarization**
+- [x] **T033 · Feature · P1: implement repository-level AI summarization**
     - **Context:** Repository context is lost when commits are mixed across repos in batches
     - **Action:**
         1. Create `get_repository_summary(repo_name, commits, prompt)` function
