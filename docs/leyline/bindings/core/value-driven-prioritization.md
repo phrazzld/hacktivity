@@ -1,7 +1,7 @@
 ---
 id: value-driven-prioritization
 last_modified: '2025-06-09'
-version: '0.1.0'
+version: '0.2.0'
 derived_from: product-value-first
 enforced_by: 'feature specification validation & code review'
 ---

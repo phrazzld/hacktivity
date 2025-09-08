@@ -1,7 +1,7 @@
 ---
 id: component-isolation
 last_modified: '2025-06-02'
-version: '0.1.0'
+version: '0.2.0'
 derived_from: orthogonality
 enforced_by: 'Code review, architectural guidelines'
 ---
@@ -11,11 +11,11 @@ Create components that operate independently without requiring knowledge of or d
 
 ## Rationale
 
-This binding directly implements our orthogonality tenet by eliminating unwanted coupling between components. When components are truly isolated, changing one component doesn't create ripple effects throughout the system. This isolation dramatically reduces the cognitive load required to understand and modify code, as developers can focus on one component at a time without needing to understand the entire system.
+This binding implements our orthogonality tenet by eliminating unwanted coupling between components. When components are truly isolated, changing one component doesn't create ripple effects throughout the system. This isolation dramatically reduces cognitive load as developers can focus on one component at a time.
 
-Think of well-isolated components like appliances in your home. Your refrigerator doesn't need to know anything about your washing machine to function properly, and replacing your refrigerator doesn't affect your washing machine's operation. Similarly, isolated software components can be replaced, upgraded, or modified without affecting other parts of the system. This independence enables parallel development, easier testing, and safer refactoring.
+Well-isolated components work like appliances in your home—your refrigerator doesn't need to know about your washing machine to function properly. Similarly, isolated software components can be replaced, upgraded, or modified without affecting other parts of the system. This independence enables parallel development, easier testing, and safer refactoring.
 
-The alternative—tightly coupled components—creates a web of dependencies where touching one part of the system requires understanding and potentially modifying many others. This coupling multiplies complexity exponentially and makes systems brittle, difficult to test, and expensive to maintain. By designing for isolation from the start, you create a system where complexity remains manageable even as the codebase grows.
+Tightly coupled components create a web of dependencies where touching one part requires understanding and potentially modifying many others. This coupling multiplies complexity exponentially and makes systems brittle. By designing for isolation from the start, complexity remains manageable as the codebase grows.
 
 ## Rule Definition
 
@@ -27,30 +27,25 @@ Component isolation requires adherence to these core principles:
 
 - **No Shared Mutable State**: Components must not share mutable state directly. Communication should happen through well-defined interfaces using message passing, events, or function calls with immutable data.
 
-- **Encapsulated Internal State**: Internal implementation details must be hidden from other components. Only expose the minimum necessary interface for the component to fulfill its purpose.
+- **Encapsulated Internal State**: Internal implementation details must be hidden from other components. Only expose the minimum necessary interface.
 
-- **Minimal Interface Surface**: Keep the public interface as small as possible while still providing necessary functionality. Large interfaces create more coupling opportunities and are harder to maintain.
+- **Minimal Interface Surface**: Keep the public interface as small as possible while providing necessary functionality. Large interfaces create more coupling opportunities.
 
-- **Stateless When Possible**: Prefer stateless components that transform inputs to outputs without maintaining internal state. When state is necessary, manage it explicitly and locally.
+- **Stateless When Possible**: Prefer stateless components that transform inputs to outputs. When state is necessary, manage it explicitly and locally.
 
-Exceptions to these rules may be appropriate when:
-- Performance profiling demonstrates a genuine need for direct communication
-- Legacy integration requires temporary coupling during migration
-- Framework constraints make perfect isolation impractical
-
-Such exceptions should be documented, minimized in scope, and addressed in future refactoring efforts.
+Exceptions may be appropriate when performance profiling demonstrates genuine need, legacy integration requires temporary coupling, or framework constraints make perfect isolation impractical. Such exceptions should be documented and minimized.
 
 ## Practical Implementation
 
-1. **Apply Dependency Injection**: Make all external dependencies explicit by injecting them through constructor parameters or method arguments. This makes dependencies visible in the component's interface and enables easy substitution for testing or different configurations.
+1. **Apply Dependency Injection**: Make all external dependencies explicit by injecting them through constructor parameters or method arguments. This makes dependencies visible and enables easy substitution for testing.
 
-2. **Use Message Passing for Communication**: Instead of direct method calls between unrelated components, use event systems, message queues, or observer patterns. This allows components to communicate without knowing about each other's internal structure.
+2. **Use Message Passing for Communication**: Instead of direct method calls between unrelated components, use event systems, message queues, or observer patterns. This allows components to communicate without knowing each other's internal structure.
 
-3. **Implement Interface Segregation**: Create focused interfaces that expose only the methods and properties relevant to specific use cases. Avoid large, monolithic interfaces that force components to depend on functionality they don't use.
+3. **Implement Interface Segregation**: Create focused interfaces that expose only methods and properties relevant to specific use cases. Avoid large, monolithic interfaces that force unnecessary dependencies.
 
-4. **Establish Clear Boundaries**: Define explicit boundaries around related functionality using modules, packages, or services. These boundaries should align with business concepts rather than technical layers, making it natural for related functionality to be grouped together.
+4. **Establish Clear Boundaries**: Define explicit boundaries around related functionality using modules, packages, or services. These boundaries should align with business concepts rather than technical layers.
 
-5. **Design for Replaceability**: Structure components so they can be replaced with alternative implementations without affecting other parts of the system. This replaceability serves as a litmus test for good isolation—if replacing a component requires changes throughout the system, it's not properly isolated.
+5. **Design for Replaceability**: Structure components so they can be replaced with alternative implementations without affecting other parts of the system. This replaceability serves as a litmus test for good isolation.
 
 ## Examples
 
@@ -196,42 +191,22 @@ class OrderService {
 # ❌ BAD: File processor with multiple responsibilities and coupling
 class FileProcessor:
     def __init__(self):
-        # Hidden coupling to specific file system implementation
         self.file_system = os
-        # Hidden coupling to specific database
-        self.db = mysql.connector.connect(
-            host='localhost',
-            user='app',
-            password='secret'
-        )
+        self.db = mysql.connector.connect(host='localhost', user='app', password='secret')
 
     def process_file(self, filename):
-        # Multiple responsibilities mixed together
-
-        # File reading responsibility
         content = self.file_system.read(filename)
-
-        # Data parsing responsibility
         if filename.endswith('.csv'):
             data = self.parse_csv(content)
         elif filename.endswith('.json'):
             data = self.parse_json(content)
-        else:
-            raise ValueError("Unsupported format")
-
-        # Validation responsibility
         for record in data:
             if not self.validate_record(record):
                 raise ValueError(f"Invalid record: {record}")
-
-        # Database storage responsibility
         cursor = self.db.cursor()
         for record in data:
             cursor.execute("INSERT INTO records VALUES (%s, %s)", record)
-        self.db.commit()
-
-        # Notification responsibility
-        self.send_notification(f"Processed {len(data)} records")
+        self.db.commit(); self.send_notification(f"Processed {len(data)} records")
 
 # ✅ GOOD: Separated, isolated components
 class FileReader:
@@ -255,22 +230,9 @@ class RecordValidator:
         self.rules = validation_rules
 
     def validate_all(self, records):
-        invalid_records = []
-        for record in records:
-            if not self._validate_record(record):
-                invalid_records.append(record)
-
+        invalid_records = [r for r in records if not self._validate_record(r)]
         if invalid_records:
             raise ValueError(f"Invalid records found: {invalid_records}")
-
-        return True
-
-class RecordRepository:
-    def __init__(self, database):
-        self.database = database
-
-    def save_all(self, records):
-        return self.database.insert_batch('records', records)
 
 # Orchestrator coordinates isolated components
 class FileProcessingService:
@@ -283,21 +245,13 @@ class FileProcessingService:
 
     def process_file(self, filename):
         try:
-            # Each step is isolated and testable
             content = self.file_reader.read_file(filename)
-
             file_type = self._determine_file_type(filename)
             data = self.parser.parse(content, file_type)
-
             self.validator.validate_all(data)
-
             result = self.repository.save_all(data)
-
-            # Notify without coupling to specific notification mechanism
             self.notifier.notify(f"Successfully processed {len(data)} records")
-
             return result
-
         except Exception as error:
             self.notifier.notify(f"Failed to process {filename}: {error}")
             raise
@@ -305,10 +259,7 @@ class FileProcessingService:
 
 ## Related Bindings
 
-- [interface-contracts.md](../../docs/bindings/core/interface-contracts.md): Component isolation and interface contracts work together to define clear boundaries between components. While isolation focuses on independence, interface contracts specify how isolated components can communicate safely and predictably.
-
-- [system-boundaries.md](../../docs/bindings/core/system-boundaries.md): System boundaries provide the higher-level architectural context for component isolation. Individual components should be isolated within their bounded contexts, while system boundaries define how those contexts interact.
-
-- [dependency-inversion.md](../../docs/bindings/core/dependency-inversion.md): Dependency inversion enables component isolation by ensuring components depend on abstractions rather than concrete implementations. This allows components to be truly independent and substitutable.
-
-- [pure-functions.md](../../docs/bindings/core/pure-functions.md): Pure functions are naturally isolated components at the function level. The principles of isolation apply both to larger architectural components and to individual functions within those components.
+- [interface-contracts.md](../../docs/bindings/core/interface-contracts.md): Component isolation and interface contracts define clear boundaries.
+- [system-boundaries.md](../../docs/bindings/core/system-boundaries.md): System boundaries provide architectural context for component isolation.
+- [dependency-inversion.md](../../docs/bindings/core/dependency-inversion.md): Dependency inversion enables isolation by ensuring components depend on abstractions.
+- [pure-functions.md](../../docs/bindings/core/pure-functions.md): Pure functions are naturally isolated components.

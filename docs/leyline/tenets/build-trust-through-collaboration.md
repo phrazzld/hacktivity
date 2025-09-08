@@ -1,7 +1,7 @@
 ---
 id: build-trust-through-collaboration
 last_modified: '2025-06-09'
-version: '0.1.0'
+version: '0.2.0'
 ---
 
 # Tenet: Build Trust Through Collaboration

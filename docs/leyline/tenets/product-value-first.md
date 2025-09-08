@@ -1,7 +1,7 @@
 ---
 id: product-value-first
 last_modified: '2025-06-09'
-version: '0.1.0'
+version: '0.2.0'
 ---
 # Tenet: Product Value First
 

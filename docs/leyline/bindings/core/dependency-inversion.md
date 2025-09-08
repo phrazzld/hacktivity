@@ -3,7 +3,7 @@ derived_from: testability
 enforced_by: code review & architecture analysis
 id: dependency-inversion
 last_modified: '2025-05-14'
-version: '0.1.0'
+version: '0.2.0'
 ---
 # Binding: Design Against Abstractions, Not Implementations
 
@@ -14,28 +14,9 @@ implementation details depending on them—not the other way around.
 
 ## Rationale
 
-This binding directly implements our testability tenet by making code inherently more
-testable through decoupling. When your business logic depends only on abstractions
-rather than concrete implementations, you can easily substitute real dependencies with
-test doubles without changing a single line of your core code. This enables fast,
-reliable tests that verify business logic in isolation from external concerns like
-databases, APIs, or file systems.
+This binding directly implements our testability tenet by making code inherently more testable through decoupling. When business logic depends only on abstractions rather than concrete implementations, you can easily substitute real dependencies with test doubles without changing core code. This enables fast, reliable tests that verify business logic in isolation from external concerns.
 
-Think of your codebase as a city with different districts. The central business district
-(your domain logic) should never rely on specific roads to the outlying industrial areas
-(your infrastructure code). Instead, the city publishes transportation standards that
-all districts must follow. When the business district needs something from industrial
-areas, it uses these standard interfaces without caring about the specific factories
-involved. This way, entire industrial zones can be rebuilt or modernized without
-disrupting the flow of business in the central district.
-
-The complexity and maintenance cost of a system increases exponentially when high-level
-modules directly depend on low-level details. Each time an infrastructure component
-changes—whether due to vendor updates, performance optimizations, or security patches—it
-ripples through your business logic, requiring changes in the very code that should be
-most stable. By inverting these dependencies, you create a protective barrier around
-your domain logic, allowing it to remain focused on business problems while
-infrastructure evolves independently.
+The complexity and maintenance cost of a system increases exponentially when high-level modules directly depend on low-level details. Each infrastructure change—vendor updates, performance optimizations, security patches—ripples through business logic, destabilizing code that should be most stable. By inverting dependencies, you create a protective barrier around domain logic, allowing it to focus on business problems while infrastructure evolves independently.
 
 ## Rule Definition
 
@@ -69,15 +50,9 @@ order to connect them, but should not itself contain any business logic.
 
 ## Practical Implementation
 
-To effectively implement dependency inversion in your projects:
+To effectively implement dependency inversion:
 
-1. **Define Interfaces in the Domain Layer**: Create interfaces or abstract classes
-   within your business domain that represent the capabilities your domain needs, not
-   the implementations that will provide them. Ask yourself: "What does my business
-   logic need to accomplish its goals?" rather than "How will this be implemented?" For
-   example, define a `UserRepository` interface in your domain with methods like
-   `findById`, `save`, and `delete` rather than importing a specific MongoDB or SQL
-   client.
+1. **Define Interfaces in the Domain Layer**: Create interfaces within your business domain that represent capabilities your domain needs, not implementations. Ask "What does my business logic need?" rather than "How will this be implemented?"
 
    ```typescript
    // Domain layer
@@ -88,13 +63,9 @@ To effectively implement dependency inversion in your projects:
    }
    ```
 
-1. **Use Constructor Dependency Injection**: Have your business logic accept its
-   dependencies through constructors rather than creating them directly. This makes
-   dependencies explicit, allows them to be substituted during testing, and prevents the
-   business layer from knowing which specific implementations are being used.
+2. **Use Constructor Dependency Injection**: Have business logic accept dependencies through constructors rather than creating them directly. This makes dependencies explicit and substitutable during testing.
 
    ```typescript
-   // Domain layer
    export class UserService {
      constructor(private userRepository: UserRepository) {}
 
@@ -104,11 +75,7 @@ To effectively implement dependency inversion in your projects:
    }
    ```
 
-1. **Implement Adapters in the Infrastructure Layer**: Create concrete implementations
-   of your domain interfaces in a separate infrastructure layer. These adapters
-   translate between your domain's abstractions and the specific technologies you're
-   using. When implementing these adapters, import from your domain, never the other way
-   around.
+3. **Implement Adapters in Infrastructure Layer**: Create concrete implementations of domain interfaces in a separate infrastructure layer. These adapters translate between domain abstractions and specific technologies. Import from domain, never the reverse.
 
    ```typescript
    // Infrastructure layer
@@ -120,41 +87,22 @@ To effectively implement dependency inversion in your projects:
      async findById(id: string): Promise<User | null> {
        // MongoDB-specific implementation
      }
-
-     async save(user: User): Promise<void> {
-       // MongoDB-specific implementation
-     }
-
-     async delete(id: string): Promise<boolean> {
-       // MongoDB-specific implementation
-     }
+     // save() and delete() implementations...
    }
    ```
 
-1. **Create a Composition Root**: Use a composition root (often in your application's
-   entry point) to wire together your domain services with their infrastructure
-   implementations. This is the one place where it's acceptable to know about both
-   domains and implementations.
+4. **Create a Composition Root**: Wire together domain services with infrastructure implementations at the application entry point—the one place acceptable to know about both.
 
    ```typescript
-   // Composition root (application entry point)
-   import { UserService } from './domain/user';
-   import { MongoUserRepository } from './infrastructure/persistence';
-
    function bootstrap() {
      const mongoClient = new MongoClient(config.dbUri);
      const userRepository = new MongoUserRepository(mongoClient);
      const userService = new UserService(userRepository);
-
-     // Continue bootstrapping application with the configured services
+     // Continue bootstrapping...
    }
    ```
 
-1. **Enforce Through Package Structure**: Reinforce dependency inversion through your
-   project's physical structure. Organize code into packages/modules that make it
-   impossible to import in the wrong direction. Many languages provide module or package
-   visibility modifiers that can help enforce these boundaries. If your language
-   doesn't, consider using build tools or linters to validate import directions.
+5. **Enforce Through Package Structure**: Organize code into packages/modules that make wrong-direction imports impossible. Use build tools or linters to validate import directions.
 
 ## Examples
 
@@ -166,7 +114,6 @@ export class UserService {
   private db: MongoClient;
 
   constructor() {
-    // Domain creates and depends directly on infrastructure
     this.db = new MongoClient('mongodb://localhost:27017');
   }
 
@@ -174,13 +121,6 @@ export class UserService {
     await this.db.connect();
     const user = await this.db.db('users').collection('users').findOne({ _id: id });
     return user;
-  }
-
-  // Business logic mixed with MongoDB-specific code
-  async createUser(userData: any) {
-    await this.db.connect();
-    const result = await this.db.db('users').collection('users').insertOne(userData);
-    return result.insertedId;
   }
 }
 ```
@@ -191,19 +131,6 @@ export class UserService {
 export interface UserRepository {
   findById(id: string): Promise<User | null>;
   save(user: User): Promise<void>;
-}
-
-export class User {
-  constructor(
-    public id: string,
-    public name: string,
-    public email: string
-  ) {}
-
-  updateEmail(newEmail: string): void {
-    // Email validation logic
-    this.email = newEmail;
-  }
 }
 
 export class UserService {
@@ -225,7 +152,6 @@ export class UserService {
 
 // Infrastructure implements domain interfaces
 import { UserRepository, User } from '../domain/user';
-import { MongoClient } from 'mongodb';
 
 export class MongoUserRepository implements UserRepository {
   constructor(private client: MongoClient) {}
@@ -267,20 +193,8 @@ export interface UserRepository {
 
 ## Related Bindings
 
-- [hex-domain-purity](../../docs/bindings/core/hex-domain-purity.md): These bindings work in tandem to create a
-  clean architecture. While dependency inversion focuses on the direction of
-  dependencies, hex-domain purity ensures that no infrastructure concepts leak into your
-  domain layer. Together, they create a strong boundary that protects your business
-  logic from technical details.
+- [hex-domain-purity](../../docs/bindings/core/hex-domain-purity.md): Works in tandem to create clean architecture. While dependency inversion focuses on dependency direction, hex-domain purity ensures no infrastructure concepts leak into domain layer.
 
-- [no-internal-mocking](../../docs/bindings/core/no-internal-mocking.md): Dependency inversion enables proper
-  testing without internal mocking. When your code follows dependency inversion, you can
-  inject test doubles at the boundaries rather than mocking internal collaborators,
-  resulting in more maintainable tests that don't break when implementation details
-  change.
+- [no-internal-mocking](../../docs/bindings/core/no-internal-mocking.md): Dependency inversion enables proper testing without internal mocking. Inject test doubles at boundaries rather than mocking internal collaborators for more maintainable tests.
 
-- [immutable-by-default](../../docs/bindings/core/immutable-by-default.md): Both bindings promote predictability
-  and maintainability. Dependency inversion makes module interactions predictable by
-  defining clear interfaces, while immutability makes data flow predictable by
-  preventing unexpected mutations. Together, they significantly reduce the cognitive
-  load of understanding how code behaves.
+- [immutable-by-default](../../docs/bindings/core/immutable-by-default.md): Both promote predictability. Dependency inversion makes module interactions predictable through clear interfaces, while immutability prevents unexpected mutations.

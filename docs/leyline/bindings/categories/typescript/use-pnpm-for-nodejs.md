@@ -1,7 +1,7 @@
 ---
 id: use-pnpm-for-nodejs
 last_modified: '2025-06-14'
-version: '0.1.0'
+version: '0.2.0'
 derived_from: automation
 enforced_by: 'packageManager field in package.json, engines requirement, CI checks'
 ---
@@ -35,7 +35,7 @@ Exceptions may be appropriate for legacy projects where migration costs outweigh
 1. **New Project Setup**: Initialize projects with pnpm and configure package.json immediately:
    ```json
    {
-     "packageManager": "pnpm@10.10.0",
+     "packageManager": "pnpm@10.12.1",
      "engines": {
        "node": ">=18.0.0",
        "pnpm": ">=10.0.0"
@@ -65,7 +65,7 @@ Exceptions may be appropriate for legacy projects where migration costs outweigh
 // ✅ GOOD: Explicit package manager and engine requirements
 {
   "name": "my-project",
-  "packageManager": "pnpm@10.10.0",
+  "packageManager": "pnpm@10.12.1",
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=10.0.0"
