@@ -1,7 +1,7 @@
 ---
 id: cli-developer-experience
 last_modified: '2025-06-14'
-version: '0.1.0'
+version: '0.2.0'
 derived_from: empathize-with-your-user
 enforced_by: 'CLI testing frameworks, UX review checklist, manual testing protocols'
 ---

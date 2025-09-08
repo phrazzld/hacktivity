@@ -1,7 +1,7 @@
 ---
 id: adaptability-and-reversibility
-last_modified: '2025-06-02'
-version: '0.1.0'
+last_modified: '2025-06-16'
+version: '0.2.0'
 ---
 # Tenet: There Are No Final Decisions
 
@@ -12,154 +12,43 @@ natural rather than catastrophic.
 
 ## Core Belief
 
-The only constant in software development is change. Requirements evolve as users
-discover what they actually need. Technologies advance and create new possibilities.
-Business contexts shift and create new priorities. Teams learn and develop better
-understanding of the problem domain. The most successful software systems are those
-that embrace this reality and design for adaptation from the beginning.
+Requirements evolve, technologies advance, and contexts shift. The most successful software systems embrace this reality and design for adaptation from the beginning.
 
-Think of your software decisions like choosing a route for a road trip. You can plan
-the optimal path based on current information, but traffic jams, road closures, or
-discovering an interesting detour might require you to adapt. If you've designed your
-journey to be flexible—keeping fuel in the tank, having alternative routes mapped,
-carrying updated navigation tools—then changes become opportunities rather than
-disasters. Rigid planning that can't accommodate new information leads to being stuck
-in traffic while more adaptable travelers find better paths.
-
-Adaptability and reversibility are about designing systems with evolution in mind.
-This means making architectural choices that don't lock you into specific
-technologies, implementation patterns, or business rules. It means building systems
-that can grow, change direction, and incorporate new learnings without requiring
-complete rewrites. It's about treating today's decisions as the best choice given
-current information, while acknowledging that better information may emerge tomorrow.
-
-The power of adaptable systems lies in their ability to evolve gracefully with
-changing requirements. When change is anticipated and designed for, new features can
-be added naturally, performance bottlenecks can be addressed surgically, and
-technological advances can be incorporated incrementally. Systems built with
-adaptability in mind tend to have longer lifespans and require fewer costly
-rewrites.
-
-This tenet differs from modularity and simplicity in its temporal focus. While
-modularity addresses how components relate to each other, and simplicity addresses
-complexity management, adaptability specifically addresses how systems change over
-time. You can have modular, simple systems that are still difficult to adapt because
-they weren't designed with change in mind.
+Adaptability means making architectural choices that don't lock you into specific technologies or patterns. Build systems that can grow and change direction without requiring complete rewrites. Treat today's decisions as the best choice given current information, while acknowledging that better information may emerge tomorrow.
 
 ## Practical Guidelines
 
-1. **Design for Reversibility**: When making architectural decisions, explicitly
-   consider how difficult they would be to reverse. Avoid choices that create
-   irreversible dependencies or lock you into specific vendors, technologies, or
-   patterns. Ask yourself: "If we discovered this decision was wrong in six months,
-   how hard would it be to change?" Favor approaches that leave options open over
-   those that commit you permanently to a particular path.
+1. **Design for Reversibility**: Ask "If this decision was wrong in six months, how hard would it be to change?" Avoid irreversible dependencies and vendor lock-in.
 
-1. **Use Tracer Bullets for Rapid Feedback**: When facing uncertainty about
-   requirements or technical approaches, build small, end-to-end implementations that
-   touch all parts of the system. These "tracer bullets" help you learn quickly
-   about what works and what doesn't, allowing you to adjust course based on real
-   feedback rather than theoretical assumptions. They provide concrete information
-   that reduces uncertainty and guides better decisions.
+2. **Use Tracer Bullets**: Build small, end-to-end implementations to learn quickly about what works and adjust course based on real feedback.
 
-1. **Prototype to Learn, Then Discard**: Use prototypes specifically to explore
-   unknowns and validate assumptions, not as foundations for production systems.
-   Prototypes should be built quickly and thrown away once they've provided the
-   learning you need. This reduces the temptation to build on shaky foundations and
-   keeps you free to implement better solutions based on what you've learned.
+3. **Prototype to Learn, Then Discard**: Use prototypes to explore unknowns and validate assumptions, not as production foundations.
 
-1. **Externalize Configuration and Policies**: Keep business rules, configuration
-   parameters, and policy decisions outside of your core code where they can be
-   modified without requiring system changes. This allows the system to adapt to new
-   business requirements without code modifications. Design clear interfaces between
-   the stable core logic and the variable configuration that's likely to change.
+4. **Externalize Configuration**: Keep business rules and policies outside core code where they can be modified without system changes.
 
-1. **Favor Composition Over Inheritance**: Build systems from composable parts that
-   can be recombined in new ways rather than rigid hierarchies that are difficult to
-   modify. Composition allows you to adapt system behavior by changing how components
-   are combined rather than by modifying the components themselves. This provides
-   much more flexibility as requirements evolve.
+5. **Favor Composition Over Inheritance**: Build from composable parts that can be recombined rather than rigid hierarchies.
 
-1. **Build in Monitoring and Observability**: Design systems that provide visibility
-   into their behavior so you can understand how they're actually being used and
-   where improvements are needed. Good observability helps you identify when and
-   where changes are needed, and provides feedback on whether adaptations are
-   working as intended. You can't adapt effectively to changes you can't see or
-   measure.
+6. **Build in Observability**: Design systems that provide visibility into behavior so you can understand usage and identify needed changes.
 
 ## Warning Signs
 
-- **Technology Lock-in**: When your system is tightly coupled to specific vendors,
-  frameworks, or technologies that would be expensive or difficult to replace, you've
-  sacrificed adaptability for short-term convenience. This creates long-term
-  strategic risk as those technologies may become obsolete or inappropriate for your
-  evolving needs.
-
-- **Hardcoded Business Rules**: When business logic is embedded directly in code
-  rather than externalized through configuration or policy engines, simple business
-  changes require development cycles. This makes the system slow to adapt to changing
-  business requirements and reduces competitive agility.
-
-- **Monolithic Data Models**: When all system data is forced into a single, rigid
-  schema that's difficult to evolve, you've created a bottleneck for adaptation.
-  Schema changes become expensive and risky, making it difficult to accommodate new
-  data requirements or optimize for new usage patterns.
-
-- **Integration Tight Coupling**: When systems are integrated through mechanisms that
-  require coordinated changes across multiple systems, you've created dependencies
-  that make adaptation expensive. Changes that should be localized to one system
-  ripple through multiple systems, increasing cost and risk.
-
-- **Fear of Refactoring**: When teams avoid improving code structure because changes
-  are too risky or expensive, the system becomes increasingly difficult to adapt.
-  Good adaptability requires the ability to safely refactor and restructure code as
-  understanding improves and requirements evolve.
-
-- **Premature Optimization**: When performance optimizations are built in before
-  they're proven necessary, you often sacrifice flexibility for premature gains.
-  These optimizations can make later changes much more difficult and expensive,
-  reducing the system's ability to adapt to new performance requirements.
-
-- **All-or-Nothing Deployments**: When changes can only be deployed as large,
-  coordinated releases, you've reduced your ability to adapt quickly to new
-  information. Good adaptability requires the ability to make incremental changes
-  and get rapid feedback on their effectiveness.
-
-- **Irreversible Data Migrations**: When data structure changes can't be rolled back
-  or when old and new formats can't coexist temporarily, you've created deployment
-  risks that discourage adaptation. Good adaptability requires migration strategies
-  that allow safe rollback and gradual transition.
+- **Technology Lock-in**: Tight coupling to specific vendors or frameworks that would be expensive to replace
+- **Hardcoded Business Rules**: Business logic embedded in code rather than externalized through configuration
+- **Monolithic Data Models**: Single, rigid schemas that make evolution expensive and risky
+- **Integration Tight Coupling**: Systems requiring coordinated changes across multiple components
+- **Fear of Refactoring**: Teams avoiding improvements because changes are too risky or expensive
+- **Premature Optimization**: Performance optimizations built before they're proven necessary
+- **All-or-Nothing Deployments**: Changes requiring large, coordinated releases instead of incremental updates
+- **Irreversible Data Migrations**: Schema changes that can't be rolled back or coexist with old formats
 
 ## Related Tenets
 
-- [Simplicity](simplicity.md): Adaptability and simplicity reinforce each other—
-  simple systems are generally easier to modify and evolve, while designing for
-  adaptability often leads to simpler, more focused solutions. However, there can be
-  tension when adaptability requires additional abstraction layers that increase
-  complexity. The key is finding the right balance for your context.
+- [Simplicity](simplicity.md): Simple systems are easier to modify and evolve. Designing for adaptability often leads to simpler, more focused solutions.
 
-- [Modularity](modularity.md): Modular design supports adaptability by creating
-  clear boundaries where changes can be contained. Well-designed modules can be
-  replaced, enhanced, or recombined without affecting the entire system.
-  Adaptability provides the temporal perspective that makes modularity more
-  effective—modules should be designed not just for current needs but for future
-  evolution.
+- [Modularity](modularity.md): Modular design creates clear boundaries where changes can be contained. Well-designed modules can be replaced or recombined without affecting the entire system.
 
-- [Explicit over Implicit](explicit-over-implicit.md): Making dependencies and
-  assumptions explicit supports adaptability by making it clear what would need to
-  change when requirements evolve. Hidden dependencies and implicit assumptions make
-  systems fragile and difficult to adapt safely. Explicit design makes the impact
-  of changes more predictable.
+- [Explicit over Implicit](explicit-over-implicit.md): Making dependencies explicit makes it clear what needs to change when requirements evolve. Hidden dependencies make systems fragile and difficult to adapt safely.
 
-- [Testability](testability.md): Good test coverage is essential for adaptability
-  because it provides the safety net that makes changes less risky. Without
-  comprehensive tests, teams become afraid to modify systems, reducing adaptability
-  over time. Tests also document current behavior, making it easier to understand
-  what changes when adapting to new requirements.
+- [Testability](testability.md): Good test coverage provides the safety net that makes changes less risky. Without tests, teams become afraid to modify systems, reducing adaptability.
 
-- [Deliver Value Continuously](deliver-value-continuously.md): Continuous delivery
-  directly enables adaptability by making course corrections quick and low-risk.
-  When you can deploy changes rapidly, you can experiment, learn, and adapt much
-  more effectively based on real user feedback. The ability to roll back changes
-  quickly makes decisions more reversible and encourages the kind of learning-based
-  adaptation that keeps software aligned with evolving needs.
+- [Deliver Value Continuously](deliver-value-continuously.md): Continuous delivery enables adaptability by making course corrections quick and low-risk. Rapid deployment allows experimentation and learning based on real feedback.
